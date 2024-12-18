@@ -1,15 +1,19 @@
-import { FileHandle, open } from "node:fs/promises";
+import fs, {FileHandle} from "node:fs/promises";
+import zlib from "node:zlib";
 import assert from "node:assert/strict";
 
 import { crc32 } from "./utils/crc32.js";
 
-import {file_header_length, eocd_length, flags} from "./constants.js";
-import {CDHeader, ZipEntry, ZipExtractEntry} from "./types.js";
+import {file_header_length, eocd_length, flags, ECompression} from "./constants.js";
+import {CDHeader, ZipCentralOptions, ZipEntry, ZipExtractEntry} from "./types.js";
 
 import {create_cd_header, parse_cd_header} from "./records/cd.js";
 import {create_file_header} from "./records/file.js";
 import {create_data_descriptor} from "./records/dd.js";
 import {create_eocd_record, parse_eocd_record} from "./records/eocd.js";
+import { Readable, Transform } from "node:stream";
+import { createReadStream } from "node:fs";
+import { pipeline } from "node:stream/promises";
 
 
 
@@ -20,23 +24,24 @@ export function isDirectory(h:CDHeader):boolean{
 /**
  * simple implementation of Zip to allow export
  * Should be compatible with standard implementations
- * It *could* compress files but images and videos are already compressed. 
- * `*.glb` files generally only deflate by ~5% and text files are negligible in size.
  * @see https://pkware.cachefly.net/webdocs/APPNOTE/APPNOTE-6.3.0.TXT
  */
-export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {comments = "" }={}) :AsyncGenerator<Buffer,void,unknown>{
+export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {comments = "", strict = false} :ZipCentralOptions={}) :AsyncGenerator<Buffer,void,unknown>{
 
+  if(strict) console.warn("Strict mode not yet implemented");
   let cd = Buffer.allocUnsafe(0);
   let files_count = 0, archive_size = 0;
 
   let flag_bits = flags.USE_DATA_DESCRIPTOR | flags.UTF_FILENAME;
-
-  for await (let {filename, mtime, stream, isDirectory} of files){
+  for await (let {filename, mtime, stream, isDirectory, compression} of files){
     if(!stream && !isDirectory){
       throw new Error("Files require a Readable stream");
     }
     if(isDirectory){
       filename += (filename.endsWith("/")?"":"/");
+    }
+    if(typeof compression === "undefined"){
+      compression = ECompression.NO_COMPRESSION;
     }
 
     files_count++;
@@ -48,21 +53,40 @@ export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {c
     const local_header_offset = archive_size;
 
     //File header
-    let header = create_file_header({filename, mtime, flags: flag_bits});
+    let header = create_file_header({filename, mtime, flags: flag_bits, compression});
     yield header; 
     archive_size += header.length;
     //End of file header
 
-    let size = 0;
+    let size = 0, compressedSize = 0;
     let sum = crc32();
     if(stream){
-      for await (let data of stream){ // TODO: best block length for network?
-        size += data.length;
-        sum.next(data);
-        yield data;
-        archive_size += data.length;
+      let dataStream = stream.pipe(new Transform({
+        transform(chunk, encoding, callback){
+          sum.next(chunk);
+          size += chunk.length;
+          callback(null, chunk);
+        }
+      }))
+
+      if(compression === ECompression.DEFLATE){
+        dataStream = dataStream.pipe(zlib.createDeflateRaw());
+      }else if(compression !== ECompression.NO_COMPRESSION){
+        stream.destroy();
+        throw new Error(`Unsupported compression method : ${ECompression[compression] ?? compression}`)
       }
+
+      dataStream = dataStream.pipe(new Transform({
+        transform(chunk, encoding, callback){
+          compressedSize += chunk.length;
+          callback(null, chunk);
+        }
+      }));
+
+      yield * dataStream;
+      archive_size += compressedSize;
     }
+
     let crc = sum.next().value;
     //Data descriptor
     let dd = create_data_descriptor({size, crc});
@@ -72,7 +96,8 @@ export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {c
     //Construct central directory record for later use
     let cdr = create_cd_header({
       filename,
-      compressedSize: size,
+      compression,
+      compressedSize,
       size,
       crc,
       flags: flag_bits,
@@ -154,7 +179,7 @@ export async function *read_cdh(handle : FileHandle) :AsyncGenerator<CDHeader, v
  * It modifies the entry returned from parse_cd_header to exclude the file header and data descriptor
  */
 export async function listEntries(filepath :string) :Promise<ZipExtractEntry[]>{
-  let handle = await open(filepath, "r");
+  let handle = await fs.open(filepath, "r");
   let entries = [];
 
   try{
@@ -163,11 +188,12 @@ export async function listEntries(filepath :string) :Promise<ZipExtractEntry[]>{
       let header = Buffer.alloc(file_header_length);
       await handle.read({buffer:header, position: entry.offset });
       assert.equal(header.readUInt32LE(0), 0x04034b50, `can't find magic byte at file header start`);
-      assert.equal(header.readUInt16LE(8), 0, `Only uncompressed data is supported at the moment`);
+      //assert.equal(header.readUInt16LE(8), 0, `Only uncompressed data is supported at the moment`);
       let header_length = file_header_length + header.readUInt16LE(26 /*name length*/) + header.readUInt16LE(28 /*extra length*/);
       entries.push({
         filename: entry.filename,
         mtime: entry.mtime,
+        compression: entry.compression,
         start:entry.offset+header_length,
         end: entry.offset+header_length + entry.compressedSize,
         isDirectory: isDirectory(entry),
@@ -177,4 +203,22 @@ export async function listEntries(filepath :string) :Promise<ZipExtractEntry[]>{
     await handle.close();
   }
   return entries;
+}
+
+export function openEntry(filepath: string, entry :ZipExtractEntry) :Readable{
+
+  let rs:Readable = createReadStream(filepath, {
+    autoClose: true,
+    start: entry.start,
+    end: entry.end,
+  })
+  if(entry.compression == ECompression.NO_COMPRESSION){
+    return rs;
+
+  } else if(entry.compression == ECompression.DEFLATE){
+    return rs.pipe(zlib.createInflateRaw());
+  }else{
+    rs.destroy(new Error(`Unsupported compression method : ${ECompression[entry.compression]?? entry.compression}`));
+    return rs;
+  }
 }

@@ -3,7 +3,7 @@ import {cd_header_length} from "../constants.js";
 import { CDHeader } from "../types.js";
 import { DateTime } from "../utils/datetime.js";
 
-export function create_cd_header({filename, mtime, extra="", dosMode, unixMode, size, compressedSize = size, crc, flags, offset}:Partial<CDHeader>&Omit<CDHeader,"compressedSize">){
+export function create_cd_header({filename, mtime, extra="", dosMode, unixMode, size, compression, compressedSize = size, crc, flags, offset}:Partial<CDHeader>&Omit<CDHeader,"compressedSize">){
   let name_length = Buffer.byteLength(filename);
   let extra_length = Buffer.byteLength(extra);
   //Construct central directory record
@@ -13,7 +13,7 @@ export function create_cd_header({filename, mtime, extra="", dosMode, unixMode, 
   cdr.writeUInt16LE( 3 << 8 | 20, 4); // made by UNIX with zip v2.0
   cdr.writeUInt16LE(20, 6); // need version 2.0 to extract
   cdr.writeUInt16LE(flags, 8); //General purpose flags
-  cdr.writeUInt16LE(0, 10); // Compression
+  cdr.writeUInt16LE(compression, 10); // Compression
   cdr.writeUInt32LE(DateTime.toDos(mtime), 12) // last mod file time & date
   cdr.writeUInt32LE(crc, 16) //crc-32
   cdr.writeUInt32LE(compressedSize, 20); // compressed size
@@ -46,7 +46,7 @@ export function parse_cd_header(cd :Buffer, offset :number) :CDHeader & {length:
     // 4 version made by
     // 6 version needed
     flags: cdh.readUInt16LE(8),
-    // compression: cdh.readUInt16LE(8),
+    compression: cdh.readUInt16LE(10),
     // 12 last mod time
     //14 last mod date
     mtime,

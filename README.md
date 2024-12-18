@@ -24,3 +24,10 @@ If fetching from the network and range requests are supported, it would be possi
 
 Inspired by [node-stream-zip](https://www.npmjs.com/package/node-stream-zip) but supports creating archives.
 
+
+## TODO
+
+ - Support DEFLATE
+ - Support Zip64
+ - strict mode
+  - enforce version requirement <= 2

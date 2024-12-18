@@ -1,15 +1,14 @@
 import type { Readable } from "node:stream";
 
-type StreamTypes = Readable|AsyncIterableIterator<Buffer>|IterableIterator<Buffer>|Buffer[];
-
 export interface Entry{
   filename :string;
+  compression:number;
   mtime :Date;
-
 }
 
-export interface ZipEntry<T extends StreamTypes = StreamTypes> extends Entry{
+export interface ZipEntry<T extends Readable = Readable> extends Entry{
   isDirectory ?:boolean;
+  compression?:number;
   stream ?:T;
 }
 
@@ -33,4 +32,10 @@ export interface ZipExtractEntry extends Entry{
   /**end offset from start of file, inclusive */
   end :number;
   isDirectory: boolean;
+}
+
+export interface ZipCentralOptions{
+  comments?:string;
+  //Whether we want to perform additional verifications or not
+  strict?:boolean;
 }

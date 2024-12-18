@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { flags } from "../constants.js";
+import { ECompression, flags } from "../constants.js";
 import { create_cd_header, parse_cd_header } from "./cd.js";
 import { CDHeader } from "../types.js";
 
@@ -8,6 +8,7 @@ let cdHeader :CDHeader = {
   filename: "foo.txt",
   extra: "",
   flags: flags.USE_DATA_DESCRIPTOR | flags.UTF_FILENAME,
+  compression: ECompression.NO_COMPRESSION,
   compressedSize: 128,
   size: 128,
   mtime: new Date('2023-03-29T13:02:10.000Z'),
