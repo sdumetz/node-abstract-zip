@@ -1,0 +1,48 @@
+{
+  "name": "abstract-zip",
+  "version": "1.0.0",
+  "description": "(un)zip to and from Node streams",
+  "type": "module",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "NODE_NO_WARNINGS=1 mocha",
+    "build": "tsc -b .",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "zip",
+    "unzip",
+    "deflate",
+    "inflate"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "files":[
+    "dist/**"
+  ],
+  "mocha": {
+    "ui": "bdd",
+    "recursive": true,
+    "check-leaks": true,
+    "extension": [
+      "js",
+      "ts"
+    ],
+    "loader": "ts-node/esm",
+    "ignore": "./node_modules/**/*",
+    "spec": "./lib/**/*.test.ts"
+  },
+  "engineStrict": true,
+  "author": "Sebastien DUMETZ <s.dumetz@holusion.com>",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/chai": "^5.0.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^16.11.7",
+    "chai": "^5.1.2",
+    "mocha": "^11.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}
