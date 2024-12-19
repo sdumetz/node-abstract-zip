@@ -18,7 +18,7 @@ npm install abstract-zip
 
 Creating a zip file can be done entirely on-the-fly, but decompressing it **safely** requires reading the end of the file first, then going back to read the files.
 
-If fetching from the network and range requests are supported, it would be possible to safely probe for the Central Directory Record first then stream the files individually. That would _probably_ also be possible from a web interface using [Blob.slice()](https://developer.mozilla.org/en-US/docs/Web/API/Blob/slice). However such an implementation would require some creative request handling.
+If fetching from the network and range requests are supported, it would be possible to safely probe for the Central Directory Record first then stream the files individually. That would also be possible from a web interface using [Blob.slice()](https://developer.mozilla.org/en-US/docs/Web/API/Blob/slice). A simplified example of such request handling is shown in the `examples` folder
 
 ## Inspiration
 

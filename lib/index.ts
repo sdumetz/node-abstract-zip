@@ -7,13 +7,12 @@ import { crc32 } from "./utils/crc32.js";
 import {file_header_length, eocd_length, flags, ECompression} from "./constants.js";
 import {CDHeader, ZipCentralOptions, ZipEntry, ZipExtractEntry} from "./types.js";
 
-import {create_cd_header, parse_cd_header} from "./records/cd.js";
+import {create_cd_header, parse_cd, parse_cd_header} from "./records/cd.js";
 import {create_file_header} from "./records/file.js";
 import {create_data_descriptor} from "./records/dd.js";
 import {create_eocd_record, parse_eocd_record} from "./records/eocd.js";
 import { Readable, Transform } from "node:stream";
 import { createReadStream } from "node:fs";
-import { pipeline } from "node:stream/promises";
 
 
 
@@ -126,27 +125,38 @@ export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {c
 }
 
 
-/**
- * search for an "end of central directory record" at the end of the file.
- * That is, something with 0x06054b50. Then check for false positives by verifying if comment length matches.
- */
-async function get_eocd_buffer(handle :FileHandle) :Promise<Buffer>{
-  let stats = await handle.stat();
-  //We expect comments to be below 65kb.
-  let b = Buffer.alloc(65535);
-  let {bytesRead} = await handle.read({buffer: b, position: Math.max(stats.size - 65535, 0)});
+export function find_eocd_index(b : Buffer, bytesRead :number = b.length) :number{
   let offset = 0;
   for(offset; offset < bytesRead - eocd_length; offset++){
     //Find a eocd signature matching a correct comments length
     if(b.readUInt32LE(bytesRead -offset - eocd_length) == 0x06054b50 && b.readUInt16LE(bytesRead - offset-2) == offset){
-      return b.slice(bytesRead - offset - eocd_length);
+      return bytesRead - offset - eocd_length;
     }
   }
-  throw new Error("Could not find end of central directory record");
+  return -1;
 }
 
-export async function zip_read_eocd(handle :FileHandle){
-  let slice = await get_eocd_buffer(handle);
+/**
+ * search for an "end of central directory record" at the end of the file.
+ * That is, something with 0x06054b50. Then check for false positives by verifying if comment length matches.
+ */
+async function find_eocd_buffer(handle :FileHandle) :Promise<Buffer>{
+  let stats = await handle.stat();
+  //We expect comments to be below 65kb.
+  let b = Buffer.alloc(65535);
+  let {bytesRead} = await handle.read({buffer: b, position: Math.max(stats.size - 65535, 0)});
+  let offset = find_eocd_index(b, bytesRead);
+  if(offset < 0){
+    throw new Error("Could not find end of central directory record");
+  }
+  return b.subarray(offset);
+}
+
+/**
+ * Scan a file from the end to find the location of the "End of Central Directory" record
+ */
+export async function find_eocd_record(handle :FileHandle){
+  let slice = await find_eocd_buffer(handle);
   return parse_eocd_record(slice);
 }
 
@@ -158,16 +168,11 @@ export async function zip_read_eocd(handle :FileHandle){
  * the entry's offset and size includes the file header.
  */
 export async function *read_cdh(handle : FileHandle) :AsyncGenerator<CDHeader, void, void >{
-  let eocd = await zip_read_eocd(handle);
+  let eocd = await find_eocd_record(handle);
   let cd = Buffer.allocUnsafe(eocd.cd_length);
   let bytes = (await handle.read({buffer:cd, position: eocd.data_length})).bytesRead;
   assert( bytes == cd.length, `Can't read Zip Central Directory Records (missing ${cd.length - bytes} of ${cd.length} bytes)`);
-  let offset = 0;
-  while(offset < eocd.cd_length){
-    let {length, ...header} = parse_cd_header(cd, offset);
-    yield header;
-    offset = offset + length;
-  }
+  yield* parse_cd(cd.subarray(0, eocd.cd_length));
 }
 
 

@@ -34,9 +34,10 @@ export function parse_eocd_record(eocdr :Buffer) :EOCDRecord{
   /**@fixme check if start_disk == 0 */
   /**@fixme check if records_on_disk == total_records */
   const comments_length = eocdr.readUInt16LE(20);
+  const cd_length = eocdr.readUInt32LE(12);
   return {
     files_count: eocdr.readUInt16LE(8),
-    cd_length: eocdr.readUInt32LE(12),
+    cd_length: cd_length,
     data_length: eocdr.readUInt32LE(16),
     comments: eocdr.slice(eocd_length, eocd_length + comments_length).toString("utf8"),
   };

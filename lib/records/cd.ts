@@ -64,3 +64,12 @@ export function parse_cd_header(cd :Buffer, offset :number) :CDHeader & {length:
     length: cd_header_length + name_length + extra_length
   }
 }
+
+export function *parse_cd(cd :Buffer) :Generator<CDHeader,void, void>{
+  let offset = 0;
+  while(offset < cd.length){
+    let {length, ...header} = parse_cd_header(cd, offset);
+    yield header;
+    offset = offset + length;
+  }
+}
