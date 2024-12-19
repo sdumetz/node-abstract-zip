@@ -33,9 +33,3 @@ export interface ZipExtractEntry extends Entry{
   end :number;
   isDirectory: boolean;
 }
-
-export interface ZipCentralOptions{
-  comments?:string;
-  //Whether we want to perform additional verifications or not
-  strict?:boolean;
-}

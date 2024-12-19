@@ -5,12 +5,12 @@ import assert from "node:assert/strict";
 import { crc32 } from "./utils/crc32.js";
 
 import {file_header_length, eocd_length, flags, ECompression} from "./constants.js";
-import {CDHeader, ZipCentralOptions, ZipEntry, ZipExtractEntry} from "./types.js";
+import {CDHeader, ZipEntry, ZipExtractEntry} from "./types.js";
 
 import {create_cd_header, parse_cd, parse_cd_header} from "./records/cd.js";
 import {create_file_header} from "./records/file.js";
 import {create_data_descriptor} from "./records/dd.js";
-import {create_eocd_record, parse_eocd_record} from "./records/eocd.js";
+import {create_eocd_record, find_eocd_index, parse_eocd_record} from "./records/eocd.js";
 import { Readable, Transform } from "node:stream";
 import { createReadStream } from "node:fs";
 
@@ -25,9 +25,8 @@ export function isDirectory(h:CDHeader):boolean{
  * Should be compatible with standard implementations
  * @see https://pkware.cachefly.net/webdocs/APPNOTE/APPNOTE-6.3.0.TXT
  */
-export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {comments = "", strict = false} :ZipCentralOptions={}) :AsyncGenerator<Buffer,void,unknown>{
+export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {comments = ""}={}) :AsyncGenerator<Buffer,void,unknown>{
 
-  if(strict) console.warn("Strict mode not yet implemented");
   let cd = Buffer.allocUnsafe(0);
   let files_count = 0, archive_size = 0;
 
@@ -44,9 +43,10 @@ export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {c
     }
 
     files_count++;
-
-    if(mtime.getUTCFullYear() < 1980){
-      mtime = new Date("1980-01-01T0:0:0Z");
+    if(Number.isNaN(mtime?.valueOf())){
+      mtime = new Date(); //Defaults to "now", which is debatable, but we shouldn't have to.
+    }else if(mtime.getUTCFullYear() < 1980){
+      mtime = new Date("1980-01-01T00:00:00Z");
     }
 
     const local_header_offset = archive_size;
@@ -125,17 +125,6 @@ export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {c
 }
 
 
-export function find_eocd_index(b : Buffer, bytesRead :number = b.length) :number{
-  let offset = 0;
-  for(offset; offset < bytesRead - eocd_length; offset++){
-    //Find a eocd signature matching a correct comments length
-    if(b.readUInt32LE(bytesRead -offset - eocd_length) == 0x06054b50 && b.readUInt16LE(bytesRead - offset-2) == offset){
-      return bytesRead - offset - eocd_length;
-    }
-  }
-  return -1;
-}
-
 /**
  * search for an "end of central directory record" at the end of the file.
  * That is, something with 0x06054b50. Then check for false positives by verifying if comment length matches.
@@ -183,8 +172,10 @@ export async function *read_cdh(handle : FileHandle) :AsyncGenerator<CDHeader, v
  * Can't work from a stream beacause it must read the end of the file (Central Directory) first.
  * It modifies the entry returned from parse_cd_header to exclude the file header and data descriptor
  */
-export async function listEntries(filepath :string) :Promise<ZipExtractEntry[]>{
-  let handle = await fs.open(filepath, "r");
+export async function listEntries(filepath :string) :Promise<ZipExtractEntry[]>
+  export async function listEntries(fd :FileHandle) :Promise<ZipExtractEntry[]>
+export async function listEntries(file :string|FileHandle) :Promise<ZipExtractEntry[]>{
+  let handle = typeof file ==="string"? await fs.open(file, "r"):file;
   let entries = [];
 
   try{
@@ -199,31 +190,36 @@ export async function listEntries(filepath :string) :Promise<ZipExtractEntry[]>{
         filename: entry.filename,
         mtime: entry.mtime,
         compression: entry.compression,
-        start:entry.offset+header_length,
-        end: entry.offset+header_length + entry.compressedSize,
+        start:( entry.compressedSize? entry.offset+header_length : 0),
+        end: (entry.compressedSize?  entry.offset+header_length + entry.compressedSize -1 :0), //Make it inclusive
         isDirectory: isDirectory(entry),
       });
     }
   }finally{
-    await handle.close();
+    if(typeof file ==="string") await handle.close();
   }
   return entries;
 }
 
-export function openEntry(filepath: string, entry :ZipExtractEntry) :Readable{
 
-  let rs:Readable = createReadStream(filepath, {
-    autoClose: true,
+export function openEntry(filepath: string, entry :ZipExtractEntry) :Readable
+export function openEntry(fd: number, entry :ZipExtractEntry) :Readable
+export function openEntry(filepath: string|number, entry :ZipExtractEntry) :Readable{
+  let fd = (typeof filepath === "number")? filepath:undefined
+  if(entry.isDirectory) throw new Error(`Entry is a directory`);
+  let rs:Readable = createReadStream(filepath as string, {
+    fd,
+    autoClose: (fd?false: true),
     start: entry.start,
     end: entry.end,
-  })
+  });
   if(entry.compression == ECompression.NO_COMPRESSION){
     return rs;
-
   } else if(entry.compression == ECompression.DEFLATE){
     return rs.pipe(zlib.createInflateRaw());
   }else{
-    rs.destroy(new Error(`Unsupported compression method : ${ECompression[entry.compression]?? entry.compression}`));
-    return rs;
+    rs.destroy();
+    /* c8 ignore next */
+    throw new Error(`Unsupported compression method : ${ECompression[entry.compression]?? entry.compression}`);
   }
 }
