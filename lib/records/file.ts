@@ -3,13 +3,14 @@ import assert from "node:assert";
 import { file_header_length, data_descriptor_size } from "../constants.js";
 import { FileHeader } from "../types.js";
 import { DateTime } from "../utils/datetime.js";
+import { create_extra_header, parse_extra_header } from "./extra.js";
 
 
-export function create_file_header({ filename, extra="", mtime, flags, compression = 0 } :FileHeader):Buffer{
+export function create_file_header({ filename, extra, mtime, flags, compression = 0 } :FileHeader):Buffer{
   let name_length = Buffer.byteLength(filename);
-  let extra_length = Buffer.byteLength(extra);
+  let extraData = create_extra_header(extra);
 
-  let header = Buffer.alloc(file_header_length + Buffer.byteLength(filename) +extra.length);
+  let header = Buffer.alloc(file_header_length + Buffer.byteLength(filename) +extraData.length);
   header.writeUInt32LE(0x04034b50, 0);
   header.writeUInt16LE(20, 4); // Version 2.0 needed (deflate and folder support)
   header.writeUInt16LE(flags, 6);                     // General purpose flags
@@ -23,9 +24,9 @@ export function create_file_header({ filename, extra="", mtime, flags, compressi
   header.writeUInt32LE(0, 22);// uncompressed size
   
   header.writeUInt16LE(name_length, 26); // Name length
-  header.writeUInt16LE(extra_length, 28); //extra length
+  header.writeUInt16LE(extraData.length, 28); //extra length
   header.write(filename, 30, "utf-8"); // name
-  header.write(extra, 30 + name_length);
+  extraData.copy(header, 30+name_length);
   return header;
 }
 
@@ -43,6 +44,6 @@ export function parse_file_header(b :Buffer) :FileHeader{
   const extra_length = b.readUInt16LE(28);
 
   const filename = b.slice(30, 30+name_length).toString("utf-8");
-  const extra = b.slice(30+name_length, 30+name_length+extra_length).toString("utf-8");
+    let extra = parse_extra_header(b.subarray(30 + name_length, 30+name_length+extra_length));
   return {filename, mtime, extra, flags, compression};
 }

@@ -6,7 +6,7 @@ import { CDHeader } from "../types.js";
 
 let cdHeader :CDHeader = {
   filename: "foo.txt",
-  extra: "",
+  extra: new Map(),
   flags: flags.USE_DATA_DESCRIPTOR | flags.UTF_FILENAME,
   compression: ECompression.NO_COMPRESSION,
   compressedSize: 128,
@@ -20,19 +20,21 @@ let cdHeader :CDHeader = {
 
 describe("create_cd_header() / parse_cd_header()", function(){
   it("basic create and parse", function(){
-
     let buf = create_cd_header(cdHeader);
     let {length,...parsed} = parse_cd_header(buf, 0);
     expect(parsed).to.deep.equal(cdHeader);
     expect(length, "there should be no unused bytes").to.equal(buf.length);
   });
+
   it("with extra", function(){
-    let h ={...cdHeader, extra: "hello world"};
+    let h:CDHeader ={...cdHeader, extra: new Map([[245, Buffer.from("hello world")]])};
     let buf = create_cd_header(h);
     let {length,...parsed} = parse_cd_header(buf, 0);
+    expect(parsed.extra?.get(245)?.toString()).to.equal("hello world");
     expect(parsed).to.deep.equal(h);
     expect(length, "there should be no unused bytes").to.equal(buf.length);
   });
+
   it("with a folder", function(){
     let h ={...cdHeader, filename: "/foo/", dosMode: 0x10, unixMode: 0o040755 };
     let buf = create_cd_header(h);

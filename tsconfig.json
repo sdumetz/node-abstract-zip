@@ -13,6 +13,6 @@
     "rootDir": "lib",
     "outDir": "dist",
   },
-  "include": ["lib/index.ts"],
+  "include": ["lib/index.ts", "lib/**/*.test.ts"],
   "ts-node": { "esm": true, "files": true }
 }

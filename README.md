@@ -27,7 +27,5 @@ Inspired by [node-stream-zip](https://www.npmjs.com/package/node-stream-zip) but
 
 ## TODO
 
- - Support DEFLATE
- - Support Zip64
- - strict mode
-  - enforce version requirement <= 2
+ - Support for Zip64
+ - strict mode to enforce spec. version requirements and verify data integrity

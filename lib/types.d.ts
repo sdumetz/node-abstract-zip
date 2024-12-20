@@ -13,9 +13,11 @@ export interface ZipEntry<T extends Readable = Readable> extends Entry{
 }
 
 export interface FileHeader extends Entry{
-  extra ?:string;
+  extra ?:ExtraData;
   flags :number;
 }
+
+export type ExtraData = Map<number, Buffer>;
 
 export interface CDHeader extends FileHeader{
   dosMode :number;

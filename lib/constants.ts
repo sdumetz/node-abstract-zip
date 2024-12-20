@@ -57,3 +57,4 @@ export const file_header_length = 30 as const
 export const data_descriptor_size = 16 as const;
 export const cd_header_length = 46 as const;
 export const eocd_length = 22 as const;
+export const extra_header_length = 4 as const;

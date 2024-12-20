@@ -2,12 +2,13 @@ import assert from "assert";
 import {cd_header_length} from "../constants.js";
 import { CDHeader } from "../types.js";
 import { DateTime } from "../utils/datetime.js";
+import {create_extra_header, parse_extra_header} from "./extra.js";
 
-export function create_cd_header({filename, mtime, extra="", dosMode, unixMode, size, compression, compressedSize = size, crc, flags, offset}:Partial<CDHeader>&Omit<CDHeader,"compressedSize">){
+export function create_cd_header({filename, mtime, extra, dosMode, unixMode, size, compression, compressedSize = size, crc, flags, offset}:Partial<CDHeader>&Omit<CDHeader,"compressedSize">){
   let name_length = Buffer.byteLength(filename);
-  let extra_length = Buffer.byteLength(extra);
+  let extraData = create_extra_header(extra);
   //Construct central directory record
-  let cdr = Buffer.allocUnsafe(cd_header_length + name_length + extra_length);
+  let cdr = Buffer.allocUnsafe(cd_header_length + name_length + extraData.length);
   
   cdr.writeUInt32LE(0x02014b50, 0); // Signature
   cdr.writeUInt16LE( 3 << 8 | 20, 4); // made by UNIX with zip v2.0
@@ -19,7 +20,7 @@ export function create_cd_header({filename, mtime, extra="", dosMode, unixMode, 
   cdr.writeUInt32LE(compressedSize, 20); // compressed size
   cdr.writeUInt32LE(size, 24); // uncompressed size
   cdr.writeUInt16LE(name_length, 28); // file name length
-  cdr.writeUInt16LE(extra_length, 30); // extra field length
+  cdr.writeUInt16LE(extraData.length, 30); // extra field length
   cdr.writeUInt16LE(0, 32); //comment length
   cdr.writeUInt16LE(0, 34) //disk number
   cdr.writeUInt16LE(0, 36) //Internal attributes. Indicate ASCII files here
@@ -27,7 +28,7 @@ export function create_cd_header({filename, mtime, extra="", dosMode, unixMode, 
   cdr.writeUInt16LE(unixMode, 40)// external attributes (unix mode)
   cdr.writeUInt32LE(offset, 42); //relative offset of file header
   cdr.write(filename, cd_header_length, "utf-8");
-  cdr.write(extra, cd_header_length + name_length, "utf-8");
+  extraData.copy(cdr, cd_header_length + name_length );
   
   return cdr;
 }
@@ -39,9 +40,10 @@ export function parse_cd_header(cd :Buffer, offset :number) :CDHeader & {length:
   let mtime = DateTime.toUnix(cdh.readUInt32LE(12));
   let name_length = cdh.readUInt16LE(28);
   let extra_length = cdh.readUInt16LE(30);
+  let extra = parse_extra_header(cd.subarray(offset+cd_header_length + name_length, offset+cd_header_length + name_length + extra_length));
   return {
     filename: cd.slice(offset+cd_header_length, offset + cd_header_length +name_length).toString("utf-8"),
-    extra: cd.slice(offset + cd_header_length + name_length, offset + cd_header_length + name_length + extra_length).toString("utf-8"),
+    extra,
     // 0 header signature
     // 4 version made by
     // 6 version needed

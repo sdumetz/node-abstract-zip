@@ -13,11 +13,13 @@
     "zip",
     "unzip",
     "deflate",
-    "inflate"
+    "inflate",
+    "stream"
   ],
   "engines": {
     "node": ">=16"
   },
+  "engineStrict": true,
   "files": [
     "dist/**"
   ],
@@ -33,7 +35,6 @@
     "ignore": "./node_modules/**/*",
     "spec": "./lib/**/*.test.ts"
   },
-  "engineStrict": true,
   "author": "Sebastien DUMETZ <s.dumetz@holusion.com>",
   "license": "Apache-2.0",
   "devDependencies": {

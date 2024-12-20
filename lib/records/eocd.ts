@@ -26,7 +26,7 @@ export function create_eocd_record({files_count, cd_length, data_length, comment
   eocdr.writeUInt32LE(cd_length, 12); //Size of central directory
   eocdr.writeUInt32LE(data_length, 16); //central directory offset
   eocdr.writeUInt16LE(Buffer.byteLength(comments), 20) //comments length
-  eocdr.copy(comments, eocd_length);
+  comments.copy(eocdr, eocd_length);
   return eocdr;
 }
 

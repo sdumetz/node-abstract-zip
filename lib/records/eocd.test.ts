@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { create_eocd_record, find_eocd_index } from "./eocd.js";
+import { create_eocd_record, find_eocd_index, parse_eocd_record } from "./eocd.js";
 
 
 
@@ -19,5 +19,15 @@ describe("find_eocd_index()", function(){
     comments.writeUInt32LE(0x06054b50, 50);
     const b = create_eocd_record({files_count: 0, cd_length:0, data_length:0, comments});
     expect(find_eocd_index(b)).to.equal(0);
+  });
+})
+
+describe("create_eocd_record() / parse_eocd_record()", function(){
+
+  it("writes comments", function(){
+    let b = create_eocd_record({files_count: 0, cd_length: 0, data_length: 0, comments: "Hello World"});
+
+    let record = parse_eocd_record(b);
+    expect(record).to.have.property("comments", "Hello World");
   })
 })
