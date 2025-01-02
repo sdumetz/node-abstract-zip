@@ -13,9 +13,17 @@ export interface ZipEntry<T extends Readable = Readable> extends Entry{
 }
 
 export interface FileHeader extends Entry{
+  /** Uncompressed size of the file. 
+   * If known it is useful to be able to predict if a Zip64 header is needed.
+   * When not provided a Zip64 extra field will always be added
+   * */
+  size ?:number;
+  compressedSize ?:number;
+  crc ?:number;
   extra ?:ExtraData;
   flags :number;
 }
+
 
 export type ExtraData = Map<number, Buffer>;
 
@@ -34,4 +42,11 @@ export interface ZipExtractEntry extends Entry{
   /**end offset from start of file, inclusive */
   end :number;
   isDirectory: boolean;
+}
+
+
+export interface DataDescriptor {
+  size: number;
+  compressedSize?: number;
+  crc: number;
 }

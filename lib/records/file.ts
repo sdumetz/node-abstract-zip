@@ -1,12 +1,15 @@
 import assert from "node:assert";
 
-import { file_header_length, data_descriptor_size } from "../constants.js";
+import { file_header_length, data_descriptor_length } from "../constants.js";
 import { FileHeader } from "../types.js";
 import { DateTime } from "../utils/datetime.js";
 import { create_extra_header, parse_extra_header } from "./extra.js";
+import { create_zip64_extra_field } from "./zip64.js";
 
-
-export function create_file_header({ filename, extra, mtime, flags, compression = 0 } :FileHeader):Buffer{
+/**
+ * Create a file header, setting Zip64 extra field if needed
+ */
+export function create_file_header({ filename, extra, mtime, flags, compression = 0, size = 0, compressedSize = 0, crc = 0 } :FileHeader):Buffer{
   let name_length = Buffer.byteLength(filename);
   let extraData = create_extra_header(extra);
 
@@ -19,9 +22,9 @@ export function create_file_header({ filename, extra, mtime, flags, compression 
   // see: https://learn.microsoft.com/fr-fr/windows/win32/api/winbase/nf-winbase-dosdatetimetofiletime?redirectedfrom=MSDN
   header.writeUInt32LE(DateTime.toDos(mtime), 10); // DOS time & date
   //CRC32 and sizes set to 0 because GP bit 3 is set
-  header.writeUInt32LE(0, 14);// crc32
-  header.writeUInt32LE(0, 18);// compressed size
-  header.writeUInt32LE(0, 22);// uncompressed size
+  header.writeUInt32LE(crc, 14);// crc32
+  header.writeUInt32LE(compressedSize, 18);// compressed size
+  header.writeUInt32LE(size, 22);// uncompressed size
   
   header.writeUInt16LE(name_length, 26); // Name length
   header.writeUInt16LE(extraData.length, 28); //extra length
@@ -40,10 +43,14 @@ export function parse_file_header(b :Buffer) :FileHeader{
   const dosTime =b.readUInt32LE(10);
   const mtime = DateTime.toUnix(dosTime);
 
+  const crc = b.readUInt32LE(14);
+  const compressedSize = b.readUInt32LE(18);
+  const size = b.readUInt32LE(22);
+
   const name_length = b.readUInt16LE(26);
   const extra_length = b.readUInt16LE(28);
 
   const filename = b.slice(30, 30+name_length).toString("utf-8");
     let extra = parse_extra_header(b.subarray(30 + name_length, 30+name_length+extra_length));
-  return {filename, mtime, extra, flags, compression};
+  return { filename, mtime, extra, flags, compression, crc, compressedSize, size };
 }

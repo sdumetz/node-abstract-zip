@@ -1,18 +1,20 @@
 import fs, {FileHandle} from "node:fs/promises";
 import zlib from "node:zlib";
 import assert from "node:assert/strict";
+import { Readable, Transform } from "node:stream";
+import { createReadStream } from "node:fs";
 
 import { crc32 } from "./utils/crc32.js";
 
 import {file_header_length, eocd_length, flags, ECompression} from "./constants.js";
 import {CDHeader, ZipEntry, ZipExtractEntry} from "./types.js";
 
-import {create_cd_header, parse_cd, parse_cd_header} from "./records/cd.js";
+import {create_cd_header, parse_cd } from "./records/cd.js";
 import {create_file_header} from "./records/file.js";
 import {create_data_descriptor} from "./records/dd.js";
 import {create_eocd_record, find_eocd_index, parse_eocd_record} from "./records/eocd.js";
-import { Readable, Transform } from "node:stream";
-import { createReadStream } from "node:fs";
+import {create_zip64_eocd_record} from "./records/zip64.js";
+
 
 
 
@@ -106,22 +108,28 @@ export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {c
       offset: local_header_offset,
     });
 
-    //Append to central directory
+    //Append to central directory buffer
     cd = Buffer.concat([cd, cdr]);
   }
 
-  // Digital signature is omitted
+  // Digital signature is omitted until we support encryption
+  // It would be appended to `cd`
+  yield cd;
 
+  const eocd_record = {
+    files_count,
+    cd_length: Math.min(cd.length, 0xffffffff),
+    data_length: Math.min(archive_size, 0xffffffff),
+    comments,
+  }
+
+  const is_zip64 =  0xffffffff <= cd.length || 0xffffffff < archive_size;
+  if(is_zip64){
+    yield create_zip64_eocd_record(eocd_record);
+  }
 
   //End of central directory
-  let eocdr = create_eocd_record({
-    files_count,
-    cd_length: cd.length,
-    data_length: archive_size,
-    comments,
-  });
-  //central directory is generally small enough to send in one chunk
-  yield Buffer.concat([cd, eocdr]);
+  yield create_eocd_record(eocd_record);
 }
 
 

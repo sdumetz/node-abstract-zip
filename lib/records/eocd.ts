@@ -3,8 +3,11 @@ import { eocd_length } from "../constants.js";
 
 
 export interface EOCDRecordParams{
+  /**Total number of files in this archive */
   files_count:number;
+  /**Byte length of the central directory headers */
   cd_length: number;
+  /**Byte length of the archive's data */
   data_length: number;
   comments?:string|Buffer;
 }

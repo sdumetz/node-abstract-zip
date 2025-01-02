@@ -54,7 +54,11 @@ export const compressionMethods = {
 
 
 export const file_header_length = 30 as const
-export const data_descriptor_size = 16 as const;
+export const data_descriptor_length = 16 as const;
 export const cd_header_length = 46 as const;
 export const eocd_length = 22 as const;
 export const extra_header_length = 4 as const;
+export const zip64_eocd_length = 56 as const;
+export const zip64_locator_length = 20 as const;
+export const zip64_extra_header_length = 6 as const;
+export const zip64_data_descriptor_length = 24 as const;

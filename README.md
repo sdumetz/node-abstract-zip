@@ -11,8 +11,51 @@ Useful when a zip's content is to be consumed directly by an application. A well
 npm install abstract-zip
 ```
 
-## Resources
+## API
 
+The module has a high(_ish_) level API to zip/unzip data and automatically handle all the headers, using [Zip64](https://en.wikipedia.org/wiki/ZIP_(file_format)#ZIP64) as needed.
+
+#### Compression
+
+```javascript
+import {Readable} from "node:stream";
+import {zip} from "abstract-zip"
+//entries can be an array, but for larger dataset you'd want an iterator that might be generated as-you-go
+const entries = [
+  {
+    filename: "/foo",
+    mtime: new Date(),
+    isDirectory: true,
+  }
+  {
+    filename: "/foo/bar.txt",
+    mtime: new Date(),
+    stream: fs.createReadStream("/path/to/file"), // Any instance of `Readable` would do
+  }
+];
+
+//Consume Using generators
+for await (let chunk of zip(entries /* iterable list of files and directories*/)){
+  //Do something with the chunk of data
+}
+//Or Using streams : 
+let rs = Readable.from(zip(entries));
+rs.pipe(/* an Http Response or whatever you need to write to*/);
+```
+
+#### Extraction
+
+```javascript
+import {listEntries, openEntry} from "abstract-zip";
+let entries = await listEntries("/path/to/archive.zip");
+
+let rs = openEntry(entries[0]);
+//Do something with the data
+```
+
+### Manual headers creation
+
+The module also exports lower-level functions to help create Zip records from metadata. Properly assembling those records and interleaving the files data is then left as an exercise for the reader.
 
 ## Limits
 
