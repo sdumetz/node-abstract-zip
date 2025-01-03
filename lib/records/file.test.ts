@@ -3,6 +3,7 @@ import { ECompression, flags } from "../constants.js"
 import { FileHeader } from "../types.js"
 import { create_file_header, parse_file_header } from "./file.js"
 import { randomInt } from "node:crypto"
+import { create_zip64_extra_field } from "./zip64.js"
 
 
 

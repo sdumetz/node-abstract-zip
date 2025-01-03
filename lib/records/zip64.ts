@@ -93,7 +93,7 @@ export function parse_zip64_eocd_record(b :Buffer, strict = true) :Zip64EOCDReco
   // zip64 end of central dir 
   // signature                       4 bytes  (0x06064b50)
   const signature = b.readUInt32LE(0);
-  if(strict) assert(signature ==0x06064b50, `Expect end of central directory record to start with 0x06064b50, found 0x${signature.toString(16)}`);
+  if(strict) assert(signature ==0x06064b50, `Expect Zip64 end of central directory record to start with 0x06064b50, found 0x${signature.toString(16).padStart(8, "0")}`);
   
 
   // size of zip64 end of central
@@ -176,11 +176,12 @@ export function parse_zip64_eocd_record(b :Buffer, strict = true) :Zip64EOCDReco
  * ```
  */
 export function parse_zip64_eocd_locator( b :Buffer, strict = false): number{
+  // zip64 end of central dir locator 
+  // signature                       4 bytes  (0x07064b50)
+  const signature = b.readUInt32LE(0);
+  assert(signature === 0x07064b50, `Expect Zip64 locator to start with signature 0x07064b50, but read 0x${signature.toString(16)}`);
+  
   if(strict){
-    // zip64 end of central dir locator 
-    // signature                       4 bytes  (0x07064b50)
-    const signature = b.readUInt32LE(0);
-    assert(signature === 0x07064b50, `Expect Zip64 locator to start with signature 0x07064b50, but read 0x${signature.toString(16)}`);
     // total number of disks           4 bytes
     let disk_number = b.readUInt32LE(16);
     assert(disk_number === 1, `Only single-file archives are supported`);

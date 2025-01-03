@@ -35,6 +35,15 @@ describe("create_zip64_eocd_record() / parse_zip64_eocd_record", function(){
     let b = create_zip64_eocd_record(header);
     let record_offset = parse_zip64_eocd_locator(b.subarray(zip64_eocd_length));
     expect(record_offset).to.equal(1500);
+    //Strict mode
+    record_offset = parse_zip64_eocd_locator(b.subarray(zip64_eocd_length), true);
+    expect(record_offset).to.equal(1500);
+  });
+
+  it("throws on invalid signature", function(){
+    let b = Buffer.alloc(zip64_locator_length);
+    b.writeUInt32LE(0x07064b50 + 1, 0);
+    expect(() => parse_zip64_eocd_locator(b)).to.throw();
   });
 
   it("includes extra data", function(){

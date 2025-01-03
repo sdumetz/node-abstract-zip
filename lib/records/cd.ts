@@ -1,8 +1,13 @@
-import assert from "assert";
+import assert from "node:assert";
+import { debuglog } from "node:util";
+
 import {cd_header_length} from "../constants.js";
 import { CDHeader } from "../types.js";
 import { DateTime } from "../utils/datetime.js";
 import {create_extra_header, parse_extra_header} from "./extra.js";
+import { parse_zip64_extra_field } from "./zip64.js";
+
+import * as log from "../utils/debug.js";
 
 export function create_cd_header({filename, mtime, extra, dosMode, unixMode, size, compression, compressedSize = size, crc, flags, offset}:Partial<CDHeader>&Omit<CDHeader,"compressedSize">){
   let name_length = Buffer.byteLength(filename);
@@ -33,7 +38,7 @@ export function create_cd_header({filename, mtime, extra, dosMode, unixMode, siz
   return cdr;
 }
 
-export function parse_cd_header(cd :Buffer, offset :number) :CDHeader & {length:number}{
+export function parse_cd_header(cd :Buffer, offset :number) :Required<CDHeader> & {length:number}{
   let cdh = cd.slice(offset, offset + cd_header_length);
   const signature = cd.readUInt32LE(0);
   assert(signature === 0x02014b50,`Expect header to begin with 0x02014b50 but found 0x${signature.toString(16)}`)
@@ -66,11 +71,21 @@ export function parse_cd_header(cd :Buffer, offset :number) :CDHeader & {length:
     length: cd_header_length + name_length + extra_length
   }
 }
-
+/**
+ * Full parser for central directory headers
+ * 
+ */
 export function *parse_cd(cd :Buffer) :Generator<CDHeader,void, void>{
   let offset = 0;
   while(offset < cd.length){
     let {length, ...header} = parse_cd_header(cd, offset);
+    let zip64FieldBuffer = header.extra.get(0x0001);
+    if(zip64FieldBuffer){
+      log.zip64(`Parse Central Directory Zip64 extra header for ${header.filename}`);
+      let zip64Field = parse_zip64_extra_field(zip64FieldBuffer);
+      header = {...header, ...zip64Field};
+      header.extra.delete(0x0001);
+    }
     yield header;
     offset = offset + length;
   }

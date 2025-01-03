@@ -51,6 +51,9 @@ export function parse_eocd_record(eocdr :Buffer) :EOCDRecord{
 
 /**
  * Find start-index of "End of Central Directory" record within a buffer
+ * 
+ * That is, something with 0x06054b50. Then check for false positives by verifying if comment length matches.
+ * 
  * @param length Total length from start of buffer to end of file, if buffer is a partial view.
  * @return the index or -1 if not found 
  */

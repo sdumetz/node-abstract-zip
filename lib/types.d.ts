@@ -9,14 +9,15 @@ export interface Entry{
 export interface ZipEntry<T extends Readable = Readable> extends Entry{
   isDirectory ?:boolean;
   compression?:number;
-  stream ?:T;
-}
-
-export interface FileHeader extends Entry{
   /** Uncompressed size of the file. 
    * If known it is useful to be able to predict if a Zip64 header is needed.
    * When not provided a Zip64 extra field will always be added
    * */
+  size ?:number;
+  stream ?:T;
+}
+
+export interface FileHeader extends Entry{
   size ?:number;
   compressedSize ?:number;
   crc ?:number;
