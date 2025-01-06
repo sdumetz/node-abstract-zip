@@ -1,27 +1,7 @@
 import assert from "node:assert";
 import { zip64_eocd_length, zip64_locator_length, zip64_extra_header_length, zip64_data_descriptor_length } from "../constants.js";
-import { CDHeader, DataDescriptor, ExtraData } from "../types.js"
-import { EOCDRecord, EOCDRecordParams } from "./eocd.js"
+import { CDHeader, DataDescriptor, ExtraData, Zip64EOCDRecord, Zip64EOCDRecordParams, Zip64ExtraField } from "../types.js"
 
-/**
- * 
- * @note Zip64's max size should be 2^64-1
- * But because we use js's native numbers we are limited to MAX_SAFE_INTEGER,
- * That is 2^53 -1 or 9PB of data. Hopefully nobody will notice.
- * If you do notice, please submit a feature request for BigInt support.
- */
-export interface Zip64EOCDRecord extends Omit<EOCDRecord, "comments">{
-  ext: ExtraData;
-  made_by :number;
-  version :number;
-  version_needed :number;
-}
-
-export interface Zip64EOCDRecordParams extends Omit<EOCDRecordParams, "comments">{
-  ext?: ExtraData;
-}
-
-export type Zip64ExtraField = Pick<CDHeader, "size"|"compressedSize"|"offset">;
 
 /**
  * Encodes metadata into a Zip64 End of Central Directory Record

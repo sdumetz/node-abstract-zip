@@ -8,13 +8,23 @@ import { debuglog } from "node:util";
 import { crc32 } from "./utils/crc32.js";
 
 import {file_header_length, eocd_length, flags, ECompression, zip64_locator_length} from "./constants.js";
-import {CDHeader, ExtraData, ZipEntry, ZipExtractEntry} from "./types.js";
+import {CDHeader, ExtraData, ZipEntry, ZipExtractEntry, EOCDRecord } from "./types.js";
 
-import {create_cd_header, parse_cd } from "./records/cd.js";
-import {create_file_header} from "./records/file.js";
-import {create_data_descriptor} from "./records/dd.js";
-import {create_eocd_record, EOCDRecord, find_eocd_index, parse_eocd_record} from "./records/eocd.js";
-import {create_zip64_data_descriptor, create_zip64_eocd_record, create_zip64_extra_field, parse_zip64_eocd_locator, parse_zip64_eocd_record} from "./records/zip64.js";
+
+import {
+  create_cd_header,
+  parse_cd,
+  create_file_header,
+  create_data_descriptor,
+  create_eocd_record,
+  find_eocd_index, 
+  parse_eocd_record,
+  create_zip64_data_descriptor,
+  create_zip64_eocd_record,
+  create_zip64_extra_field,
+  parse_zip64_eocd_locator,
+  parse_zip64_eocd_record
+} from "./records/index.js";
 
 import * as log from "./utils/debug.js";
 
@@ -48,8 +58,10 @@ export async function *zip(files :AsyncIterable<ZipEntry>|Iterable<ZipEntry>, {c
 
     files_count++;
     if(Number.isNaN(mtime?.valueOf())){
+      log.entries(`Fix invalid mtime (${mtime}) for ${filename}`);
       mtime = new Date(); //Defaults to "now", which is debatable, but we shouldn't have to.
     }else if(mtime.getUTCFullYear() < 1980){
+      log.entries(`Rewrite date from ${mtime.toISOString()} to match DOS zero-time of 1980-01-01`);
       mtime = new Date("1980-01-01T00:00:00Z");
     }
 

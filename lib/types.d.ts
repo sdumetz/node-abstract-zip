@@ -51,3 +51,38 @@ export interface DataDescriptor {
   compressedSize?: number;
   crc: number;
 }
+
+
+export interface EOCDRecordParams{
+  /**Total number of files in this archive */
+  files_count:number;
+  /**Byte length of the central directory headers */
+  cd_length: number;
+  /**Byte length of the archive's data */
+  data_length: number;
+  comments?:string|Buffer;
+}
+
+export interface EOCDRecord extends EOCDRecordParams{
+  comments :string;
+}
+
+/**
+ * 
+ * @note Zip64's max size should be 2^64-1
+ * But because we use js's native numbers we are limited to MAX_SAFE_INTEGER,
+ * That is 2^53 -1 or 9PB of data. Hopefully nobody will notice.
+ * If you do notice, please submit a feature request for BigInt support.
+ */
+export interface Zip64EOCDRecord extends Omit<EOCDRecord, "comments">{
+  ext: ExtraData;
+  made_by :number;
+  version :number;
+  version_needed :number;
+}
+
+export interface Zip64EOCDRecordParams extends Omit<EOCDRecordParams, "comments">{
+  ext?: ExtraData;
+}
+
+export type Zip64ExtraField = Pick<CDHeader, "size"|"compressedSize"|"offset">;

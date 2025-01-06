@@ -1,20 +1,7 @@
 import assert from "node:assert";
 import { eocd_length } from "../constants.js";
+import { EOCDRecordParams, EOCDRecord } from "../types.js";
 
-
-export interface EOCDRecordParams{
-  /**Total number of files in this archive */
-  files_count:number;
-  /**Byte length of the central directory headers */
-  cd_length: number;
-  /**Byte length of the archive's data */
-  data_length: number;
-  comments?:string|Buffer;
-}
-
-export interface EOCDRecord extends EOCDRecordParams{
-  comments :string;
-}
 
 export function create_eocd_record({files_count, cd_length, data_length, comments = Buffer.allocUnsafe(0)}:EOCDRecordParams) :Buffer{
   if(typeof comments === "string"){

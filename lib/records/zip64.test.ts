@@ -1,8 +1,17 @@
 import { expect } from "chai";
-import { create_zip64_data_descriptor, create_zip64_eocd_record, create_zip64_extra_field, parse_zip64_data_descriptor, parse_zip64_eocd_locator, parse_zip64_eocd_record, parse_zip64_extra_field, Zip64EOCDRecord, Zip64EOCDRecordParams } from "./zip64.js";
+import { 
+  create_zip64_data_descriptor,
+  create_zip64_eocd_record,
+  create_zip64_extra_field,
+  parse_zip64_data_descriptor,
+  parse_zip64_eocd_locator,
+  parse_zip64_eocd_record,
+  parse_zip64_extra_field,
+} from "./zip64.js";
 import { zip64_eocd_length, zip64_locator_length } from "../constants.js";
 
 import { randomInt } from "node:crypto";
+import { Zip64EOCDRecord } from "../types.js";
 
 
 describe("create_zip64_eocd_record() / parse_zip64_eocd_record", function(){
