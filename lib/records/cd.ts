@@ -9,7 +9,7 @@ import { parse_zip64_extra_field } from "./zip64.js";
 
 import * as log from "../utils/debug.js";
 
-export function create_cd_header({filename, mtime, extra, dosMode, unixMode, size, compression, compressedSize = size, crc, flags, offset}:Partial<CDHeader>&Omit<CDHeader,"compressedSize">){
+export function create_cd_header({filename, mtime, extra = new Map(), dosMode, unixMode, size, compression, compressedSize = size, crc, flags, offset}:Partial<CDHeader>&Omit<CDHeader,"compressedSize">){
   let name_length = Buffer.byteLength(filename);
   let extraData = create_extra_header(extra);
   //Construct central directory record

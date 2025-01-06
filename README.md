@@ -81,7 +81,7 @@ This project is writen in typescript and aims to be dependency-free. It is not s
 
 ## TODO
 
- - strict mode to enforce spec. version requirements and verify data integrity
+ - strict mode to enforce spec. version requirements and verify data integrity. Implement protection against zip bombs in particular.
  - Auto-parse more known extra fields (see [extra fields](https://libzip.org/specifications/extrafld.txt))
 
 ## Development

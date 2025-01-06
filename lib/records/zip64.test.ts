@@ -53,6 +53,12 @@ describe("create_zip64_eocd_record() / parse_zip64_eocd_record", function(){
     expect(parsed.ext).to.have.property("size", 1);
     expect(parsed).to.deep.equal(header);
   });
+  it("extensible data is optionnal", function(){
+    let {ext, ...h} = header;
+    let b = create_zip64_eocd_record(h);
+    let parsed = parse_zip64_eocd_record(b);
+    expect(parsed).to.deep.equal(header);
+  })
 });
 
 describe("create_zip64_extra_field() / parse_zip64_extra_field()", function(){

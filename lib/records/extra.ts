@@ -3,7 +3,7 @@ import { ExtraData } from "../types.js";
 
 
 
-export function create_extra_header(extra :ExtraData =new Map()){
+export function create_extra_header(extra :ExtraData){
 
   let length = 0;
   for(let data of extra.values()){
@@ -12,7 +12,7 @@ export function create_extra_header(extra :ExtraData =new Map()){
   let b= Buffer.allocUnsafe(length);
   let offset = 0;
   for(let [id, data] of extra.entries()){
-    if(typeof id !== "number") throw new Error("Extra data ID must be a number");
+    if(typeof id !== "number") throw new Error("Extra data ID must be a number, received "+ typeof id);
     offset = b.writeUInt16LE(id, offset);
     offset = b.writeUInt16LE(data.length, offset);
     offset += data.copy(b, offset);

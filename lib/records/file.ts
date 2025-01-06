@@ -9,7 +9,7 @@ import { create_zip64_extra_field } from "./zip64.js";
 /**
  * Create a file header, setting Zip64 extra field if needed
  */
-export function create_file_header({ filename, extra, mtime, flags, compression = 0, size = 0, compressedSize = 0, crc = 0 } :FileHeader):Buffer{
+export function create_file_header({ filename, extra = new Map(), mtime, flags, compression = 0, size = 0, compressedSize = 0, crc = 0 } :FileHeader):Buffer{
   let name_length = Buffer.byteLength(filename);
   let extraData = create_extra_header(extra);
 

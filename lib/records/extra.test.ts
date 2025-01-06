@@ -13,6 +13,11 @@ describe("create_extra_header", function(){
     // 0x0001 0x0002 0x0003 but the first two are low-endian
     expect(b.toString("hex")).to.equal(`010002000003`);
   });
+  it("throws on invalid ID", function(){
+    expect(()=>create_extra_header(new Map([
+      ["foo", Buffer.from("0003", "hex")]
+    ]) as any)).to.throw("Extra data ID must be a number, received string");
+  });
 });
 
 describe("parse_extra_header", function(){

@@ -305,12 +305,10 @@ describe("Integration tests", function(){
             yield {filename: `dir_${i.toString(16).padStart(5)}`, isDirectory: true, mtime: new Date(1673450722892)}
           }
         }
-        console.time("buf");
         let handle = new HandleMock();
         for await (let chunk of zip(makeEntries())){
           handle._write(chunk);
         }
-        console.timeEnd("buf");
         let entries = await listEntries(handle as any, true);
         expect(entries).to.have.length(files_count);
       })
